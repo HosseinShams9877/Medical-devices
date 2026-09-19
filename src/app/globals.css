@@ -1,0 +1,370 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* ─── فونت وزیرمتن — لوکال (بدون نیاز به اینترنت/CDN؛ همهٔ وزن‌ها ۱۰۰ تا ۹۰۰ در یک فایل متغیر) ─── */
+@font-face {
+  font-family: "Vazirmatn";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("/fonts/vazirmatn-arabic-wght-normal.woff2") format("woff2");
+  unicode-range: U+0600-06FF,U+0750-077F,U+0870-088E,U+0890-0891,U+0897-08E1,U+08E3-08FF,U+200C-200E,U+2010-2011,U+204F,U+2E41,U+FB50-FDFF,U+FE70-FE74,U+FE76-FEFC;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("/fonts/vazirmatn-latin-wght-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2212,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("/fonts/vazirmatn-latin-ext-wght-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: "Vazirmatn", "Tahoma", var(--font-geist-sans), sans-serif;
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* ─── پالت تمیز و حرفه‌ای (Teal پزشکی) — بدون آبی/Indigo ─── */
+:root {
+  --radius: 0.55rem;
+  --background: oklch(0.985 0.003 180);
+  --foreground: oklch(0.24 0.02 210);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.24 0.02 210);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.24 0.02 210);
+  --primary: oklch(0.51 0.09 185);
+  --primary-foreground: oklch(0.99 0.005 185);
+  --secondary: oklch(0.955 0.01 185);
+  --secondary-foreground: oklch(0.35 0.04 190);
+  --muted: oklch(0.955 0.006 200);
+  --muted-foreground: oklch(0.52 0.02 210);
+  --accent: oklch(0.94 0.03 185);
+  --accent-foreground: oklch(0.32 0.05 190);
+  --destructive: oklch(0.55 0.19 27);
+  --border: oklch(0.90 0.01 200);
+  --input: oklch(0.90 0.01 200);
+  --ring: oklch(0.55 0.08 185);
+  --chart-1: oklch(0.55 0.09 185);
+  --chart-2: oklch(0.62 0.15 145);
+  --chart-3: oklch(0.70 0.15 75);
+  --chart-4: oklch(0.55 0.15 25);
+  --chart-5: oklch(0.60 0.10 260);
+  --sidebar: oklch(0.26 0.03 200);
+  --sidebar-foreground: oklch(0.95 0.01 190);
+  --sidebar-primary: oklch(0.65 0.10 185);
+  --sidebar-primary-foreground: oklch(0.99 0.005 185);
+  --sidebar-accent: oklch(0.33 0.035 200);
+  --sidebar-accent-foreground: oklch(0.95 0.01 190);
+  --sidebar-border: oklch(0.34 0.03 200);
+  --sidebar-ring: oklch(0.55 0.08 185);
+}
+
+.dark {
+  --background: oklch(0.19 0.02 200);
+  --foreground: oklch(0.95 0.01 190);
+  --card: oklch(0.24 0.025 200);
+  --card-foreground: oklch(0.95 0.01 190);
+  --popover: oklch(0.24 0.025 200);
+  --popover-foreground: oklch(0.95 0.01 190);
+  --primary: oklch(0.68 0.10 185);
+  --primary-foreground: oklch(0.17 0.02 200);
+  --secondary: oklch(0.30 0.03 200);
+  --secondary-foreground: oklch(0.92 0.01 190);
+  --muted: oklch(0.30 0.03 200);
+  --muted-foreground: oklch(0.70 0.02 195);
+  --accent: oklch(0.32 0.04 190);
+  --accent-foreground: oklch(0.92 0.01 190);
+  --destructive: oklch(0.65 0.17 25);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.60 0.08 185);
+  --sidebar: oklch(0.16 0.02 200);
+  --sidebar-foreground: oklch(0.92 0.01 190);
+  --sidebar-primary: oklch(0.65 0.10 185);
+  --sidebar-primary-foreground: oklch(0.99 0.005 185);
+  --sidebar-accent: oklch(0.26 0.03 200);
+  --sidebar-accent-foreground: oklch(0.92 0.01 190);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: oklch(0.60 0.08 185);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Vazirmatn", "Tahoma", ui-sans-serif, system-ui, sans-serif;
+    font-feature-settings: "ss01";
+  }
+  ::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, oklch(0.72 0.06 185), oklch(0.80 0.03 200));
+    border-radius: 6px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, oklch(0.62 0.09 185), oklch(0.72 0.05 200));
+    background-clip: padding-box;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   لایه طراحی گرافیکی — انیمیشن‌ها، الگوها و جلوه‌های ویژه
+   ═══════════════════════════════════════════════════════════ */
+
+/* اعداد و ارقام لاتین در جداول با فونت خوانا */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── انیمیشن‌های پایه ─── */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in-right {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes float-soft {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-12px) rotate(2deg); }
+}
+@keyframes pulse-ring {
+  0% { transform: scale(0.9); opacity: 0.7; }
+  70% { transform: scale(1.6); opacity: 0; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+@keyframes heartbeat {
+  0%, 40%, 80%, 100% { transform: scale(1); }
+  10% { transform: scale(1.14); }
+  20% { transform: scale(1.05); }
+  30% { transform: scale(1.12); }
+}
+@keyframes shimmer-slide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(200%); }
+}
+@keyframes ecg-line {
+  0% { stroke-dashoffset: 480; }
+  100% { stroke-dashoffset: 0; }
+}
+@keyframes grow-bar {
+  from { width: 0; }
+}
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes gradient-pan {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* ─── کلاس‌های کاربردی انیمیشن ─── */
+.anim-fade-in { animation: fade-in 0.5s ease-out both; }
+.anim-fade-up { animation: fade-in-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.anim-fade-right { animation: fade-in-right 0.5s ease-out both; }
+.anim-float { animation: float-soft 7s ease-in-out infinite; }
+.anim-float-slow { animation: float-soft 11s ease-in-out infinite; }
+.anim-pulse-ring { animation: pulse-ring 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+.anim-heartbeat { animation: heartbeat 2.6s ease-in-out infinite; }
+.anim-spin-slow { animation: spin-slow 16s linear infinite; }
+
+/* ورود پلکانی عناصر (Staggered) */
+.stagger > * { animation: fade-in-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.stagger > *:nth-child(1) { animation-delay: 0.04s; }
+.stagger > *:nth-child(2) { animation-delay: 0.10s; }
+.stagger > *:nth-child(3) { animation-delay: 0.16s; }
+.stagger > *:nth-child(4) { animation-delay: 0.22s; }
+.stagger > *:nth-child(5) { animation-delay: 0.28s; }
+.stagger > *:nth-child(6) { animation-delay: 0.34s; }
+.stagger > *:nth-child(7) { animation-delay: 0.40s; }
+.stagger > *:nth-child(8) { animation-delay: 0.46s; }
+.stagger > *:nth-child(9) { animation-delay: 0.52s; }
+.stagger > *:nth-child(10) { animation-delay: 0.58s; }
+.stagger > *:nth-child(n + 11) { animation-delay: 0.64s; }
+
+/* ─── جلوه‌های گرافیکی کارت ─── */
+.card-lift {
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease, border-color 0.25s ease;
+}
+.card-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px -10px oklch(0.51 0.09 185 / 0.30), 0 4px 10px -4px oklch(0.51 0.09 185 / 0.18);
+  border-color: oklch(0.51 0.09 185 / 0.35);
+}
+
+/* درخشش لبه در هاور */
+.glow-ring {
+  position: relative;
+}
+.glow-ring::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, oklch(0.62 0.09 185 / 0.0), oklch(0.62 0.09 185 / 0.45), oklch(0.62 0.09 185 / 0.0));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.glow-ring:hover::after { opacity: 1; }
+
+/* ─── شیشه‌ای (Glassmorphism) ─── */
+.glass {
+  background: oklch(1 0 0 / 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid oklch(1 0 0 / 0.65);
+  box-shadow: 0 8px 32px -12px oklch(0.30 0.04 200 / 0.25);
+}
+
+/* ─── متن گرادیانی ─── */
+.grad-text {
+  background: linear-gradient(120deg, oklch(0.45 0.09 185), oklch(0.55 0.10 172), oklch(0.58 0.11 150));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.grad-text-warm {
+  background: linear-gradient(120deg, oklch(0.55 0.13 28), oklch(0.62 0.14 55));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ─── پس‌زمینه‌های تزئینی ─── */
+.bg-med-grid {
+  background-image:
+    linear-gradient(to left, oklch(0.51 0.09 185 / 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, oklch(0.51 0.09 185 / 0.055) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+.bg-med-dots {
+  background-image: radial-gradient(oklch(0.51 0.09 185 / 0.16) 1.1px, transparent 1.1px);
+  background-size: 18px 18px;
+}
+.bg-aurora {
+  background:
+    radial-gradient(680px 380px at 88% -8%, oklch(0.80 0.10 175 / 0.34), transparent 60%),
+    radial-gradient(540px 340px at 4% 12%, oklch(0.84 0.07 200 / 0.38), transparent 62%),
+    radial-gradient(720px 480px at 50% 108%, oklch(0.86 0.09 140 / 0.26), transparent 58%),
+    linear-gradient(160deg, oklch(0.975 0.012 185), oklch(0.945 0.025 195) 55%, oklch(0.96 0.02 178));
+  background-size: 200% 200%;
+  animation: gradient-pan 22s ease-in-out infinite;
+}
+
+/* ─── خط نوار پیشرفت متحرک ─── */
+.bar-grow {
+  animation: grow-bar 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ─── افکت براق‌شدن (Shimmer) برای بارگذاری ─── */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, oklch(1 0 0 / 0.55) 50%, transparent 70%);
+  animation: shimmer-slide 1.6s infinite;
+}
+
+/* ─── خط ECG (نبض پزشکی) ─── */
+.ecg-path {
+  stroke-dasharray: 480;
+  animation: ecg-line 3.2s linear infinite;
+}
+
+/* ─── نقطه وضعیت زنده ─── */
+.live-dot {
+  position: relative;
+  display: inline-flex;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: oklch(0.72 0.15 145);
+}
+.live-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: inherit;
+  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* احترام به تنظیمات کاهش حرکت */
+@media (prefers-reduced-motion: reduce) {
+  .anim-fade-in, .anim-fade-up, .anim-fade-right, .anim-float, .anim-float-slow,
+  .anim-pulse-ring, .anim-heartbeat, .anim-spin-slow, .stagger > *,
+  .bg-aurora, .bar-grow, .shimmer::after, .ecg-path, .live-dot::after {
+    animation: none !important;
+  }
+  .card-lift:hover { transform: none; }
+}
