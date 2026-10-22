@@ -1,0 +1,28 @@
+{
+  "success": true,
+  "checks": [
+    "Missing configuration fails clearly before database access",
+    "Origin with trailing slash rejected",
+    "Insecure production cookies rejected",
+    "Missing database is not silently created",
+    "Bundled default passwords block production startup",
+    "Isolated admin hardened and other default-password accounts disabled",
+    "Administrative commands load production configuration from .env",
+    "Actual npm run start:production starts successfully",
+    "Security headers present and framework header removed",
+    "Anonymous database, backup and private paths are inaccessible",
+    "Login issues Secure, HttpOnly and SameSite session cookie",
+    "Cross-origin mutation rejected",
+    "Eight concurrent authenticated customer writes succeed",
+    "Backup permission enforced and old session revoked after password change",
+    "Attachment upload and authenticated download preserve bytes",
+    "Downloaded backup has valid integrity/references and contains committed customer/attachment metadata",
+    "Restart on restored backup retains customer and attachment access",
+    "Missing attachment blocks preflight",
+    "Broken foreign-key reference blocks preflight",
+    "Negative inventory blocks preflight; restored valid data passes",
+    "Original database is byte-for-byte unchanged"
+  ],
+  "completedAt": "2026-10-21T16:09:44.367Z",
+  "environment": "linux / v24.19.0 / loopback upstream; Windows and public TLS not tested"
+}

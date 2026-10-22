@@ -1,3 +1,4 @@
+import { databaseFile, backupDirectory } from '@/lib/storage'
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requirePerm, withApi, ok, faError } from '@/lib/api'
@@ -7,10 +8,7 @@ import { existsSync } from 'fs'
 import path from 'path'
 import { randomUUID } from 'crypto'
 
-// Prisma resolves relative SQLite paths from prisma/schema.prisma.
-const DB_FILE = path.resolve(process.cwd(), 'prisma', process.env.DATABASE_URL?.startsWith('file:')
-  ? process.env.DATABASE_URL.slice(5) : '../db/custom.db')
-const BACKUP_DIR = path.join(process.cwd(), 'backups')
+const BACKUP_DIR = backupDirectory()
 const MAX_BACKUPS = 30
 
 // ─── GET /api/admin/backup — فهرست پشتیبان‌ها / دانلود ───
@@ -47,6 +45,7 @@ export const GET = withApi(async (req: NextRequest) => {
 // ─── POST /api/admin/backup — ایجاد پشتیبان ───
 export const POST = withApi(async (req: NextRequest) => {
   const user = await requirePerm(req, 'system.backup')
+  const DB_FILE = databaseFile()
   if (!existsSync(DB_FILE)) throw faError('فایل دیتابیس یافت نشد.')
   if (!existsSync(BACKUP_DIR)) await mkdir(BACKUP_DIR, { recursive: true })
 

@@ -1,5 +1,7 @@
 'use client'
 
+import { ProductEditor } from './CatalogEditors'
+import { NewBomDialog } from './ProductsView'
 import * as React from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, useDraggable, useDroppable, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
@@ -360,7 +362,10 @@ const ORIGIN_ICONS: Record<string, React.ReactNode> = {
 
 function CreateOrderDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const qc = useQueryClient()
-  const { data: products } = useQuery({ queryKey: ['products'], queryFn: () => apiGet<{ products: { id: string; code: string; name: string; revisions: { id: string; revision: string; isActive: boolean; _count: { boms: number } }[] }[] }>('/api/products') })
+  const { can } = useApp()
+  const [productOpen, setProductOpen] = React.useState(false)
+  const [bomOpen, setBomOpen] = React.useState(false)
+  const { data: products } = useQuery({ queryKey: ['products'], queryFn: () => apiGet<{ products: { id: string; code: string; name: string; revisions: { id: string; revision: string; isActive: boolean; boms: { id: string; revision: number }[]; _count: { boms: number } }[] }[] }>('/api/products') })
   const { data: custData } = useQuery({
     queryKey: ['customers'],
     queryFn: () => apiGet<{ customers: { id: string; code: string; name: string }[] }>('/api/customers'),
@@ -398,7 +403,7 @@ function CreateOrderDialog({ open, onOpenChange }: { open: boolean; onOpenChange
   const mutation = useMutation({
     mutationFn: async () => {
       const created = await apiPost<{ order: { id: string; code: string } }>('/api/orders', {
-      productId, productRevisionId: revisionId, qty: parseInt(qty) || 0, priority,
+      productId, productRevisionId: revisionId, expectedBomId: requirements.data?.bomId, qty: parseInt(qty) || 0, priority,
       productionLine: line || undefined, plannedStart: plannedStart || undefined, plannedEnd: plannedEnd || undefined,
       notes: notes || undefined,
       originType,
@@ -439,12 +444,16 @@ function CreateOrderDialog({ open, onOpenChange }: { open: boolean; onOpenChange
   }
 
   const selectedRev = revisions.find((r) => r.id === revisionId)
-  const noBom = selectedRev && selectedRev._count.boms === 0
+  const noBom = !selectedRev || selectedRev.boms.length === 0
+  const requirements = useQuery({ queryKey: ['order-material-preview', revisionId, qty], queryFn: () => apiGet<{ bomId: string; items: { code: string; name: string; unit: string; required: number; available: number; shortage: number }[] }>(`/api/orders/preview?revisionId=${revisionId}&qty=${qty}`), enabled: open && !!revisionId && !noBom && Number.isInteger(Number(qty)) && Number(qty) > 0 && Number(qty) <= 500 })
 
   const refLabel = originType === 'DIRECTIVE' ? 'شمارهٔ دستور مدیریتی *' : originType === 'MINUTES' ? 'شمارهٔ صورت‌جلسه *' : 'شمارهٔ سفارش مشتری'
   const issuedLabel = originType === 'MINUTES' ? 'مرجع ابلاغ‌کننده' : 'صادرکنندهٔ دستور'
 
   return (
+    <>
+    <ProductEditor open={productOpen} onOpenChange={setProductOpen} onCreated={p => { setProductId(p.id); setRevisionId('') }} />
+    {revisionId && <NewBomDialog open={bomOpen} onOpenChange={setBomOpen} productId={productId} revisionId={revisionId} currentItems={[]} />}
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto">
         <DialogHeader>
@@ -517,6 +526,7 @@ function CreateOrderDialog({ open, onOpenChange }: { open: boolean; onOpenChange
           {/* ── پارامتر‌های تولید ── */}
           <div className="space-y-1.5 col-span-2">
             <Label>محصول (کد و نام دستگاه) *</Label>
+            {can('product.manage') && <Button size="sm" variant="outline" onClick={() => setProductOpen(true)}>افزودن محصول جدید</Button>}
             <Select value={productId} onValueChange={(v) => { setProductId(v); setRevisionId('') }}>
               <SelectTrigger><SelectValue placeholder="انتخاب محصول" /></SelectTrigger>
               <SelectContent>
@@ -537,6 +547,9 @@ function CreateOrderDialog({ open, onOpenChange }: { open: boolean; onOpenChange
             <Label>تعداد *</Label>
             <Input type="number" min={1} value={qty} onChange={(e) => setQty(e.target.value)} dir="ltr" className="text-left" />
           </div>
+          {revisionId && noBom && <div className="col-span-2 text-amber-700">برای این نسخه BOM فعال تعریف نشده است. {can('bom.revise') && <Button size="sm" onClick={() => setBomOpen(true)}>تعریف BOM</Button>}</div>}
+          {requirements.error && <p className="col-span-2 text-rose-700">{requirements.error.message}</p>}
+          {requirements.data && <div className="col-span-2 overflow-auto"><p className="text-xs">نیاز مواد؛ ثبت پیش‌نویس موجودی را کسر نمی‌کند. رزرو در تأیید و مصرف در شروع تولید انجام می‌شود.</p><table className="w-full text-xs"><thead><tr><th>قطعه</th><th>نیاز</th><th>قابل استفاده</th><th>کمبود</th></tr></thead><tbody>{requirements.data.items.map(i => <tr key={i.code}><td>{i.code} — {i.name}</td><td>{i.required} {i.unit}</td><td>{i.available}</td><td className={i.shortage ? 'text-rose-700' : ''}>{i.shortage}</td></tr>)}</tbody></table></div>}
           <div className="space-y-1.5">
             <Label>اولویت</Label>
             <Select value={priority} onValueChange={setPriority}>
@@ -569,12 +582,13 @@ function CreateOrderDialog({ open, onOpenChange }: { open: boolean; onOpenChange
           <Button variant="outline" onClick={() => onOpenChange(false)}>انصراف</Button>
           <Button
             onClick={() => mutation.mutate()}
-            disabled={mutation.isPending || !productId || !revisionId || noBom || ((originType === 'CUSTOMER_ORDER' || destinationType === 'CUSTOMER') && !customerId) || ((originType === 'DIRECTIVE' || originType === 'MINUTES') && !originRef.trim())}
+            disabled={mutation.isPending || !productId || !revisionId || noBom || requirements.isFetching || !!requirements.error || !Number.isInteger(Number(qty)) || Number(qty) < 1 || Number(qty) > 500 || ((originType === 'CUSTOMER_ORDER' || destinationType === 'CUSTOMER') && !customerId) || ((originType === 'DIRECTIVE' || originType === 'MINUTES') && !originRef.trim())}
           >
             {mutation.isPending ? 'در حال ثبت…' : 'ثبت پیش‌نویس درخواست'}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    </>
   )
 }

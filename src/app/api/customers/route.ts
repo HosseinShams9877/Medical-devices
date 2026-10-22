@@ -9,7 +9,7 @@ export const GET = withApi(async (req: NextRequest) => {
   const sp = req.nextUrl.searchParams
   const q = sp.get('q') || undefined
   const customers = await db.customer.findMany({
-    where: q ? { OR: [{ name: { contains: q } }, { code: { contains: q } }, { contactPerson: { contains: q } }, { city: { contains: q } }] } : {},
+    where: q ? { OR: [{ name: { contains: q } }, { code: { contains: q } }, { contactPerson: { contains: q } }, { city: { contains: q } }, { phone: { contains: q } }] } : {},
     include: { _count: { select: { devices: true, tickets: true, complaints: true } } },
     orderBy: { createdAt: 'asc' },
   })

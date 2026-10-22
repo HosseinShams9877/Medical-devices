@@ -70,7 +70,7 @@ export const POST = withApi(async (req: NextRequest) => {
         ...(body.password ? { passwordHash: hashPassword(body.password) } : {}),
       },
     })
-    if (body.status === 'DISABLED') {
+    if (body.status === 'DISABLED' || body.password || (body.role && body.role !== target.role)) {
       await db.session.deleteMany({ where: { userId: body.id } })
     }
     await audit(req, user, 'USER_UPDATE', { entityType: 'USER', entityId: body.id, entityCode: target.username, oldValues: old, newValues: { ...body, password: body.password ? '(تغییر یافت)' : undefined } })

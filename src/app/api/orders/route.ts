@@ -1,3 +1,5 @@
+import { randomUUID } from 'crypto'
+import { materialPlan } from '@/lib/catalog'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
@@ -49,6 +51,7 @@ export const GET = withApi(async (req: NextRequest) => {
 const createSchema = z.object({
   productId: z.string().min(1),
   productRevisionId: z.string().min(1),
+  expectedBomId: z.string().optional(),
   qty: z.number().int().min(1).max(500),
   priority: z.enum(['LOW', 'NORMAL', 'HIGH', 'URGENT']).default('NORMAL'),
   plannedStart: z.string().optional(),
@@ -72,9 +75,10 @@ export const POST = withApi(async (req: NextRequest) => {
 
   const revision = await db.productRevision.findUnique({
     where: { id: body.productRevisionId },
-    include: { product: true, boms: { where: { status: 'ACTIVE' }, orderBy: { revision: 'desc' }, take: 1, include: { items: true } } },
+    include: { product: true, processSteps: { orderBy: { stepIndex: 'asc' } }, boms: { where: { status: 'ACTIVE' }, orderBy: { revision: 'desc' }, take: 1, include: { items: true } } },
   })
   if (!revision || revision.productId !== body.productId) throw faError('نسخه محصول انتخابی معتبر نیست.')
+  if (!revision.product.active) throw faError('محصول غیرفعال است.')
   if (revision.boms.length === 0) throw faError('این نسخه محصول BOM فعال ندارد. ابتدا BOM را تعریف کنید.')
 
   if (body.plannedStart && body.plannedEnd && new Date(body.plannedEnd) < new Date(body.plannedStart)) {
@@ -94,19 +98,18 @@ export const POST = withApi(async (req: NextRequest) => {
   if (body.customerId && !customer) throw faError('مشتری انتخابی یافت نشد.')
 
   // شماره سفارش یکتا و خودکار
-  const year = 1404
-  const count = await db.productionOrder.count()
-  const code = `PO-${year}-${String(count + 1).padStart(3, '0')}`
-  const clash = await db.productionOrder.findUnique({ where: { code } })
-  const finalCode = clash ? `PO-${year}-${Date.now().toString().slice(-5)}` : code
-
-  const order = await db.productionOrder.create({
+  const finalCode = `PO-${new Intl.DateTimeFormat('en-u-ca-persian', { year: 'numeric' }).formatToParts(new Date()).find(p => p.type === 'year')?.value}-${randomUUID().slice(0, 8)}`
+  const { order, requirements } = await db.$transaction(async tx => {
+  const requirements = await materialPlan(revision.id, body.qty, tx)
+  if (requirements.bomId !== revision.boms[0].id || (body.expectedBomId && body.expectedBomId !== requirements.bomId)) throw faError('BOM تغییر کرده است؛ پیش‌نمایش نیاز مواد را دوباره بگیرید.', 409)
+  const order = await tx.productionOrder.create({
     data: {
       code: finalCode,
       productId: body.productId,
       productRevisionId: body.productRevisionId,
       bomId: revision.boms[0].id,
       qty: body.qty,
+      steps: { create: revision.processSteps.map(s => ({ stepIndex: s.stepIndex, name: s.name, notes: s.description, tools: s.tools, acceptance: s.acceptance, required: s.required, needsQc: s.needsQc, isPackaging: s.isPackaging })) },
       priority: body.priority,
       status: 'DRAFT',
       plannedStart: body.plannedStart ? new Date(body.plannedStart) : undefined,
@@ -125,10 +128,13 @@ export const POST = withApi(async (req: NextRequest) => {
     },
   })
 
+  return { order, requirements }
+  })
+
   await audit(req, user, 'ORDER_CREATE', {
     entityType: 'ORDER', entityId: order.id, entityCode: order.code,
     newValues: { product: revision.product.code, qty: body.qty, priority: body.priority, originType: body.originType, originRef: body.originRef },
   })
 
-  return ok({ order })
+  return ok({ order, requirements })
 })

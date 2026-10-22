@@ -1,3 +1,4 @@
+import { uploadDirectory } from '@/lib/storage'
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requirePerm, withApi, ok, faError } from '@/lib/api'
@@ -7,7 +8,7 @@ import { existsSync } from 'fs'
 import path from 'path'
 import { randomUUID } from 'crypto'
 
-const UPLOAD_DIR = path.join(process.cwd(), 'upload')
+const UPLOAD_DIR = uploadDirectory()
 const MAX_SIZE = 10 * 1024 * 1024 // ۱۰ مگابایت
 const ALLOWED_MIME: Record<string, string> = {
   'application/pdf': '.pdf',

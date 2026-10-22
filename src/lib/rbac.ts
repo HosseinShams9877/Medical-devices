@@ -40,6 +40,7 @@ export const PERMISSIONS = {
   'bom.revise': 'ایجاد نسخه جدید BOM',
   'product.manage': 'ایجاد/ویرایش محصول و نسخه‌ها',
   // موجودی
+  'component.manage': 'تعریف و ویرایش قطعات',
   'inventory.view': 'مشاهده موجودی',
   'inventory.receive': 'ثبت رسید انبار (قطعه ورودی)',
   'inventory.adjust': 'اصلاح موجودی',
@@ -102,8 +103,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     ...ALL_VIEWS, 'production.create', 'production.edit', 'production.approve',
     'production.cancel', 'production.overrideShortage', 'production.start',
     'production.sendToQc', 'production.warehouse', 'production.ship',
-    'bom.revise', 'product.manage', 'inventory.bomConsume', 'audit.view',
-    'documents.upload', 'service.create', 'excel.export',
+    'bom.revise', 'product.manage', 'component.manage', 'inventory.bomConsume', 'audit.view',
+    'documents.upload', 'service.create', 'excel.import', 'excel.export',
   ],
   OPERATOR: [
     V, 'bom.view', 'inventory.view', 'qc.view', 'device.view', 'documents.view',
@@ -119,7 +120,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ],
   WAREHOUSE: [
     V, 'bom.view', 'inventory.view', 'device.view', 'documents.view',
-    'inventory.receive', 'inventory.adjust', 'inventory.move',
+    'component.manage', 'inventory.receive', 'inventory.adjust', 'inventory.move',
     'inventory.bomConsume', 'production.warehouse', 'production.ship',
     'search.use', 'notifications.view', 'excel.export',
   ],
@@ -127,7 +128,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     ...ALL_VIEWS, 'service.create', 'service.assign', 'service.update',
     'service.close', 'service.complaint.create', 'service.complaint.manage',
     'service.warranty.override', 'customer.create', 'documents.upload',
-    'excel.export',
+    'excel.import', 'excel.export',
   ],
   TECHNICIAN: [
     V, 'bom.view', 'inventory.view', 'device.view', 'documents.view',
@@ -135,7 +136,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ],
   SALES: [
     ...ALL_VIEWS, 'customer.create', 'service.create', 'documents.upload',
-    'device.deliver', 'production.ship', 'excel.export',
+    'device.deliver', 'production.ship', 'excel.import', 'excel.export',
   ],
   VIEWER: [...ALL_VIEWS],
 }

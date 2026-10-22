@@ -1,5 +1,6 @@
 'use client'
 
+import CatalogImportDialog from './CatalogImportDialog'
 import * as React from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiGet, apiPost } from './api'
@@ -276,18 +277,19 @@ function TicketDetail({ id, onClose }: { id: string; onClose: () => void }) {
   )
 }
 
-function CreateTicketDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+function CreateTicketDialog({ open, onOpenChange, initialCustomer }: { open: boolean; onOpenChange: (v: boolean) => void; initialCustomer?: { id: string; phone: string | null } }) {
   const qc = useQueryClient()
-  const { data: custData } = useQuery({ queryKey: ['customers'], queryFn: () => apiGet<{ customers: { id: string; code: string; name: string }[] }>('/api/customers'), enabled: open })
-  const { data: devData } = useQuery({ queryKey: ['qc-devices'], queryFn: () => apiGet<{ devices: { id: string; serial: string; product: { name: string } }[] }>('/api/devices'), enabled: open })
+  const { data: custData } = useQuery({ queryKey: ['customers'], queryFn: () => apiGet<{ customers: { id: string; code: string; name: string; phone: string | null }[] }>('/api/customers'), enabled: open })
+  const { data: devData } = useQuery({ queryKey: ['qc-devices'], queryFn: () => apiGet<{ devices: { id: string; serial: string; customerId: string | null; product: { name: string } }[] }>('/api/devices'), enabled: open })
 
   const [form, setForm] = React.useState({ customerId: '', deviceId: '', deviceSerialText: '', contactPhone: '', problem: '', category: '', priority: 'NORMAL' })
+  React.useEffect(() => { if (open && initialCustomer) setForm(f => ({ ...f, customerId: initialCustomer.id, contactPhone: initialCustomer.phone ?? '', deviceId: '' })) }, [open, initialCustomer])
   const [error, setError] = React.useState('')
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }))
 
   const mutation = useMutation({
     mutationFn: () => apiPost('/api/tickets', {
-      customerId: form.customerId, deviceId: form.deviceId || undefined, deviceSerialText: form.deviceSerialText || undefined,
+      customerId: form.customerId, deviceId: form.deviceId && form.deviceId !== 'none' ? form.deviceId : undefined, deviceSerialText: form.deviceSerialText || undefined,
       contactPhone: form.contactPhone || undefined, problem: form.problem, category: form.category || undefined, priority: form.priority,
     }),
     onSuccess: () => {
@@ -306,7 +308,7 @@ function CreateTicketDialog({ open, onOpenChange }: { open: boolean; onOpenChang
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5 col-span-2">
             <Label>مشتری *</Label>
-            <Select value={form.customerId} onValueChange={(v) => set('customerId', v)}>
+            <Select value={form.customerId} onValueChange={(v) => setForm(f => ({ ...f, customerId: v, contactPhone: custData?.customers.find(c => c.id === v)?.phone ?? '', deviceId: '' }))}>
               <SelectTrigger><SelectValue placeholder="انتخاب مشتری…" /></SelectTrigger>
               <SelectContent>{(custData?.customers ?? []).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
             </Select>
@@ -317,7 +319,7 @@ function CreateTicketDialog({ open, onOpenChange }: { open: boolean; onOpenChang
               <SelectTrigger><SelectValue placeholder="انتخاب…" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">—</SelectItem>
-                {(devData?.devices ?? []).map((d) => <SelectItem key={d.id} value={d.id}>{d.serial}</SelectItem>)}
+                {(devData?.devices ?? []).filter(d => !d.customerId || d.customerId === form.customerId).map((d) => <SelectItem key={d.id} value={d.id}>{d.serial}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -744,9 +746,13 @@ function CreateRepairDialog({ open, onOpenChange }: { open: boolean; onOpenChang
 function CustomersTab() {
   const { can, navigate } = useApp()
   const [createOpen, setCreateOpen] = React.useState(false)
+  const [importOpen, setImportOpen] = React.useState(false)
+  const [selected, setSelected] = React.useState<{ id: string; phone: string | null; name: string } | undefined>()
+  const [ticketOpen, setTicketOpen] = React.useState(false)
+  const [q, setQ] = React.useState('')
   const { data, isLoading } = useQuery({
-    queryKey: ['customers'],
-    queryFn: () => apiGet<{ customers: { id: string; code: string; name: string; type: string; contactPerson: string | null; phone: string | null; city: string | null; email: string | null; _count: { devices: number; tickets: number; complaints: number } }[] }>('/api/customers'),
+    queryKey: ['customers', q],
+    queryFn: () => apiGet<{ customers: { id: string; code: string; name: string; type: string; contactPerson: string | null; phone: string | null; city: string | null; email: string | null; _count: { devices: number; tickets: number; complaints: number } }[] }>(`/api/customers${q ? '?q=' + encodeURIComponent(q) : ''}`),
   })
 
   return (
@@ -758,11 +764,16 @@ function CustomersTab() {
       ]} />
 
       <Section icon={<Users className="w-4 h-4" />}>
-        <div className="flex justify-end mb-3">
+        <div className="flex gap-2 flex-wrap mb-3">
+          <SearchBox value={q} onChange={setQ} placeholder="کد، نام، شهر یا تلفن مشتری…" />
+          {can('excel.import') && can('customer.create') && <Button variant="outline" onClick={() => setImportOpen(true)}>ورود مشتریان از اکسل</Button>}
+          {can('service.create') && <Button disabled={!selected} onClick={() => setTicketOpen(true)}>ثبت درخواست خدمات برای مشتری منتخب</Button>}
+          {selected && <span className="text-sm">مشتری منتخب: {selected.name}</span>}
           {can('customer.create') && <Button className="bg-gradient-to-l from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 shadow-lg shadow-teal-600/25" onClick={() => setCreateOpen(true)}><Plus className="w-4 h-4 ml-1" /> مشتری جدید</Button>}
         </div>
         <DataTable
           columns={[
+            { key: 'select', header: 'انتخاب', render: (c: { id: string; name: string; phone: string | null }) => <input aria-label={`انتخاب ${c.name}`} type="radio" name="service-customer" checked={selected?.id === c.id} onChange={() => setSelected(c)} /> },
             { key: 'code', header: 'کد', render: (c: { id: string; code: string }) => <span className="font-mono font-semibold text-teal-700 tnum">{c.code}</span> },
             { key: 'name', header: 'نام مشتری', render: (c: { name: string; type: string }) => <div><div className="text-[13px] font-medium">{c.name}</div><div className="text-[11px] text-muted-foreground">{CUSTOMER_TYPES[c.type] ?? c.type}</div></div> },
             { key: 'contact', header: 'رابط / تلفن', render: (c: { contactPerson: string | null; phone: string | null }) => <span className="text-xs tnum">{c.contactPerson ?? '—'} · {c.phone ?? '—'}</span> },
@@ -776,6 +787,8 @@ function CustomersTab() {
           empty="مشتری ثبت نشده است"
         />
       </Section>
+      <CatalogImportDialog kind="customers" open={importOpen} onOpenChange={setImportOpen} />
+      <CreateTicketDialog open={ticketOpen} onOpenChange={setTicketOpen} initialCustomer={selected} />
       <CreateCustomerDialog open={createOpen} onOpenChange={setCreateOpen} />
     </>
   )

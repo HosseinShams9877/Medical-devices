@@ -1,5 +1,6 @@
 'use client'
 
+import { ComponentEditor, type EditableComponent } from './CatalogEditors'
 import * as React from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiGet, apiPost } from './api'
@@ -72,6 +73,8 @@ export default function InventoryView() {
     queryFn: () => apiGet<{ components: ComponentRow[]; suppliers: { id: string; code: string; name: string }[]; inspections: InspectionRow[]; movements: MovementRow[]; bomCatalog: BomCatalogProduct[]; finishedGoods: FinishedGood[] }>(`/api/inventory${q ? `?q=${encodeURIComponent(q)}` : ''}${shortageOnly ? (q ? '&' : '?') + 'shortage=1' : ''}`),
   })
 
+  const [componentOpen, setComponentOpen] = React.useState(false)
+  const [editComponent, setEditComponent] = React.useState<EditableComponent | undefined>()
   const comps = data?.components ?? []
   const criticalShortage = comps.filter((c) => c.shortage || (c.belowMin && c.criticality === 'CRITICAL')).length
   const belowMin = comps.filter((c) => c.belowMin).length
@@ -84,6 +87,8 @@ export default function InventoryView() {
         desc="رسید مواد ابتدا در انتظار کنترل کیفیت می‌ماند؛ پس از تأیید وارد موجودی قابل‌مصرف می‌شود. خروج دستی و مصرف BOM نیز با ردیابی لات در دفتر گردش ثبت می‌شوند."
       />
 
+      {can('component.manage') && <Button onClick={() => { setEditComponent(undefined); setComponentOpen(true) }}>تعریف قطعه جدید</Button>}
+      <ComponentEditor open={componentOpen} onOpenChange={setComponentOpen} component={editComponent} />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 stagger">
         <KpiCard label="اقلام فعال" value={comps.length} tone="info" icon={<Boxes className="w-5 h-5" />} />
         <KpiCard label="زیر حداقل موجودی" value={belowMin} tone="warning" icon={<TriangleAlert className="w-5 h-5" />} />
@@ -147,6 +152,7 @@ export default function InventoryView() {
                 ) },
                 { key: 'actions', header: 'اقدام', render: (c: ComponentRow) => (
                   <div className="flex gap-1">
+                    {can('component.manage') && <Button size="sm" variant="outline" onClick={() => { setEditComponent(c); setComponentOpen(true) }}>ویرایش قطعه</Button>}
                     {can('inventory.receive') && <Button size="sm" variant="outline" aria-label="ثبت رسید" title="ثبت رسید (ورود + کنترل ورودی)" onClick={() => setReceiveFor(c)}><PackagePlus className="w-3.5 h-3.5" /></Button>}
                     {can('inventory.move') && <Button size="sm" variant="outline" aria-label="خروج دستی" title="خروج دستی از انبار" onClick={() => setOutFor(c)}><PackageMinus className="w-3.5 h-3.5" /></Button>}
                     {can('inventory.adjust') && <Button size="sm" variant="outline" aria-label="اصلاح موجودی" title="اصلاح کاهشی موجودی (افزایش از مسیر رسید و QC)" onClick={() => setAdjustFor(c)}><ArrowUpDown className="w-3.5 h-3.5" /></Button>}
@@ -493,13 +499,14 @@ function ManualOutDialog({ comp, onClose }: { comp: ComponentRow | null; onClose
   const [qty, setQty] = React.useState('')
   const [lotId, setLotId] = React.useState('auto')
   const [reason, setReason] = React.useState('')
+  const [operationId, setOperationId] = React.useState('')
   const [error, setError] = React.useState('')
 
-  React.useEffect(() => { if (comp) { setQty(''); setLotId('auto'); setReason(''); setError('') } }, [comp])
+  React.useEffect(() => { if (comp) { setOperationId(crypto.randomUUID()); setQty(''); setLotId('auto'); setReason(''); setError('') } }, [comp])
 
   const mutation = useMutation({
     mutationFn: () => apiPost('/api/inventory', {
-      action: 'out', componentId: comp!.id, qty: parseFloat(qty),
+      action: 'out', operationId, componentId: comp!.id, qty: parseFloat(qty),
       lotId: lotId === 'auto' ? undefined : lotId, reason,
     }),
     onSuccess: () => {

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
-    "build": "prisma generate && next build",
+    "build": "next build",
     "start": "npm run start:production",
     "lint": "eslint .",
     "db:push": "prisma db push",
@@ -15,18 +15,21 @@
     "db:backfill-destination": "node --import tsx scripts/backfill_destination.ts",
     "db:reconcile-pending": "node --import tsx scripts/reconcile_pending_iqc.ts",
     "db:reset-business": "tsx scripts/reset_business.ts",
-    "demo": "node --import tsx scripts/demo.ts",
-    "preflight": "node --import tsx scripts/preflight.ts",
-    "admin:secure": "node --import tsx scripts/set-production-admin.ts",
-    "start:production": "npm run preflight && next start --hostname 127.0.0.1 -p 3000",
-    "typecheck": "tsc --noEmit"
+    "demo": "node --import ./scripts/load-env.mjs --import tsx scripts/demo.ts",
+    "preflight": "node --import ./scripts/load-env.mjs --import tsx scripts/preflight.ts",
+    "admin:secure": "node --import ./scripts/load-env.mjs --import tsx scripts/set-production-admin.ts",
+    "start:production": "node scripts/start-production.mjs",
+    "typecheck": "tsc --noEmit",
+    "test:acceptance": "node scripts/test-acceptance.mjs",
+    "test:deployment": "node tests/deployment-check.mjs",
+    "test:portable": "node --test tests/portable.test.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^5.1.1",
-    "@mdxeditor/editor": "^3.39.1",
+    "@next/env": "16.3.8",
     "@prisma/client": "^6.11.1",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
@@ -66,8 +69,9 @@
     "exceljs": "^4.4.0",
     "framer-motion": "^12.23.2",
     "input-otp": "^1.4.2",
+    "jszip": "^3.10.2",
     "lucide-react": "^0.525.0",
-    "next": "^16.1.1",
+    "next": "16.3.8",
     "next-auth": "^4.24.11",
     "next-intl": "^4.3.4",
     "next-themes": "^0.4.6",
@@ -78,12 +82,12 @@
     "react-hook-form": "^7.60.0",
     "react-markdown": "^10.1.0",
     "react-resizable-panels": "^3.0.3",
-    "react-syntax-highlighter": "^15.6.1",
     "recharts": "^2.15.4",
-    "sharp": "^0.34.3",
+    "sharp": "^0.35.5",
     "sonner": "^2.0.6",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
+    "tsx": "^4.19.2",
     "uuid": "^11.1.0",
     "vaul": "^1.1.2",
     "z-ai-web-dev-sdk": "^0.0.18",
@@ -99,10 +103,17 @@
     "eslint-config-next": "^16.1.1",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.5",
-    "typescript": "^5",
-    "tsx": "^4.19.2"
+    "typescript": "^5"
   },
   "engines": {
-    "node": ">=22 <25"
+    "node": ">=24 <25"
+  },
+  "overrides": {
+    "@prisma/config": {
+      "deepmerge-ts": "^8.0.0"
+    },
+    "exceljs": {
+      "uuid": "^11.1.1"
+    }
   }
 }

@@ -52,6 +52,7 @@ export const POST = withApi(async (req: NextRequest) => {
   if (!customer) throw faError('مشتری یافت نشد.', 404)
 
   const device = body.deviceId ? await db.device.findUnique({ where: { id: body.deviceId } }) : null
+  if (device?.customerId && device.customerId !== customer.id) throw faError('دستگاه انتخابی متعلق به مشتری دیگری است.')
   if (body.deviceId && !device) throw faError('دستگاه یافت نشد.', 404)
 
   const code = `ST-1404-${String((await db.serviceTicket.count()) + 1).padStart(3, '0')}`

@@ -1,5 +1,8 @@
 'use client'
 
+import ProcessEditor from './ProcessEditor'
+import { ProductEditor } from './CatalogEditors'
+import CatalogImportDialog from './CatalogImportDialog'
 import * as React from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiGet, apiPost } from './api'
@@ -20,7 +23,7 @@ import { faInt } from '@/lib/jalali'
 
 interface ProductRow {
   id: string; code: string; name: string; category: string | null; warrantyMonths: number; hasFirmware: boolean; active: boolean
-  revisions: { id: string; revision: string; isActive: boolean; notes: string | null; _count: { boms: number; devices: number; orders: number } }[]
+  revisions: { id: string; revision: string; isActive: boolean; notes: string | null; boms: { id: string; revision: number }[]; _count: { boms: number; devices: number; orders: number } }[]
   _count: { devices: number; orders: number }
 }
 
@@ -33,6 +36,8 @@ export default function ProductsView() {
   const [detailId, setDetailId] = React.useState<string | null>(null)
 
   const { data, isLoading } = useQuery({ queryKey: ['products'], queryFn: () => apiGet<{ products: ProductRow[] }>('/api/products') })
+  const [createOpen, setCreateOpen] = React.useState(false)
+  const [importKind, setImportKind] = React.useState<'products' | 'bom' | null>(null)
   const products = data?.products ?? []
 
   return (
@@ -42,10 +47,17 @@ export default function ProductsView() {
         desc="BOM کنترل‌شده: هر تغییر، نسخهٔ جدیدی ایجاد می‌کند و سفارش‌های قبلی به نسخهٔ زمان تولید خودشان متصل می‌مانند (بدون بازنویسی)"
       />
 
+      <div className="flex gap-2 flex-wrap">
+        {can('product.manage') && <Button onClick={() => setCreateOpen(true)}>افزودن محصول</Button>}
+        {can('excel.import') && can('product.manage') && <Button variant="outline" onClick={() => setImportKind('products')}>ورود محصولات از اکسل</Button>}
+        {can('excel.import') && can('bom.revise') && <Button variant="outline" onClick={() => setImportKind('bom')}>ورود BOM از اکسل</Button>}
+      </div>
+      <ProductEditor open={createOpen} onOpenChange={setCreateOpen} onCreated={p => setDetailId(p.id)} />
+      {importKind && <CatalogImportDialog key={importKind} kind={importKind} open onOpenChange={v => { if (!v) setImportKind(null) }} />}
       <StatChips items={[
         { label: 'محصول فعال', value: faInt(products.filter((p) => p.active).length), tone: 'info', icon: <Package className="w-3.5 h-3.5" /> },
         { label: 'نسخهٔ محصول', value: faInt(products.reduce((s, p) => s + p.revisions.length, 0)), tone: 'neutral', icon: <Layers className="w-3.5 h-3.5" /> },
-        { label: 'BOM فعال', value: faInt(products.reduce((s, p) => s + p.revisions.filter((r) => r.isActive && r._count.boms > 0).length, 0)), tone: 'success', icon: <Boxes className="w-3.5 h-3.5" /> },
+        { label: 'BOM فعال', value: faInt(products.reduce((s, p) => s + p.revisions.filter((r) => r.isActive && r.boms.length > 0).length, 0)), tone: 'success', icon: <Boxes className="w-3.5 h-3.5" /> },
         { label: 'دستگاه ساخته‌شده', value: faInt(products.reduce((s, p) => s + p._count.devices, 0)), tone: 'neutral', icon: <Cpu className="w-3.5 h-3.5" /> },
       ]} />
 
@@ -65,7 +77,7 @@ export default function ProductsView() {
             ) },
             { key: 'bom', header: 'BOM فعال', render: (p: ProductRow) => {
               const active = p.revisions.find((r) => r.isActive)
-              return <span className="text-xs tnum">{active && active._count.boms > 0 ? `r${active._count.boms} تعریف‌شده` : 'ندارد'}</span>
+              return <span className="text-xs tnum">{active && active.boms.length > 0 ? `r${active.boms[0].revision} فعال` : 'ندارد'}</span>
             } },
             { key: 'devices', header: 'دستگاه‌های ساخته‌شده', hideOnMobile: true, render: (p: ProductRow) => <span className="tnum">{faInt(p._count.devices)}</span> },
             { key: 'orders', header: 'سفارش‌ها', hideOnMobile: true, render: (p: ProductRow) => <span className="tnum">{faInt(p._count.orders)}</span> },
@@ -96,6 +108,8 @@ function ProductDetail({ id, onClose }: { id: string; onClose: () => void }) {
       orders: { id: string; code: string; status: string; qty: number; bom: { revision: number } | null }[]
     } }>(`/api/products/${id}`),
   })
+  const [processOpen, setProcessOpen] = React.useState(false)
+  const [editOpen, setEditOpen] = React.useState(false)
   const [tab, setTab] = React.useState('bom')
   const [newBomOpen, setNewBomOpen] = React.useState(false)
   const [revOpen, setRevOpen] = React.useState(false)
@@ -124,6 +138,7 @@ function ProductDetail({ id, onClose }: { id: string; onClose: () => void }) {
           <p className="text-sm text-muted-foreground mt-1">{p.description ?? p.category ?? ''} · گارانتی {faInt(p.warrantyMonths)} ماه</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {can('product.manage') && <Button variant="outline" onClick={() => setEditOpen(true)}>ویرایش محصول</Button>}
           {can('product.manage') && <Button variant="outline" onClick={() => setRevOpen(true)}><Layers className="w-4 h-4 ml-1" /> نسخه محصول جدید</Button>}
           {can('bom.revise') && activeRev && <Button className="bg-gradient-to-l from-teal-700 to-teal-600 hover:from-teal-800 hover:to-teal-700 shadow-lg shadow-teal-600/25" onClick={() => setNewBomOpen(true)}><Plus className="w-4 h-4 ml-1" /> نسخه BOM جدید</Button>}
           <Button variant="ghost" onClick={onClose}>بستن</Button>
@@ -155,7 +170,7 @@ function ProductDetail({ id, onClose }: { id: string; onClose: () => void }) {
                         <td className="px-2 py-2">{item.component.name}</td>
                         <td className="px-2 py-2 text-xs">{item.component.manufacturer ?? '—'}</td>
                         <td className="px-2 py-2 text-xs">{item.component.supplier?.name ?? '—'}</td>
-                        <td className="px-2 py-2 tnum">{faInt(item.qty)}</td>
+                        <td className="px-2 py-2 tnum">{item.qty} {item.component.unit}</td>
                         <td className="px-2 py-2"><StatusBadge map={CRITICALITY} value={item.criticality} /></td>
                       </tr>
                     ))}
@@ -169,6 +184,7 @@ function ProductDetail({ id, onClose }: { id: string; onClose: () => void }) {
         <TabsContent value="process" className="mt-3">
           <Section title="قالب فرایند تولید" desc={`نسخه ${activeRev?.revision} — با تأیید هر سفارش، مراحل آن در سفارش کپی می‌شود`} icon={<FileCog className="w-4 h-4" />}>
             <div className="space-y-2">
+              {can('product.manage') && activeRev && <Button variant="outline" onClick={() => setProcessOpen(true)}>تعریف و ویرایش مراحل</Button>}
               {(activeRev?.processSteps ?? []).map((s) => (
                 <div key={s.id} className="flex flex-wrap items-center gap-2 rounded-lg border p-2.5">
                   <span className="w-6 h-6 rounded-md bg-gradient-to-br from-teal-600 to-emerald-500 text-white flex items-center justify-center text-[11px] font-bold tnum shadow-sm">{faInt(s.stepIndex)}</span>
@@ -200,6 +216,8 @@ function ProductDetail({ id, onClose }: { id: string; onClose: () => void }) {
         </TabsContent>
       </Tabs>
 
+      {activeRev && <ProcessEditor open={processOpen} onOpenChange={setProcessOpen} productId={id} revisionId={activeRev.id} current={activeRev.processSteps} />}
+      <ProductEditor open={editOpen} onOpenChange={setEditOpen} product={p} />
       {/* نسخه BOM جدید */}
       {activeRev && (
         <NewBomDialog
@@ -230,21 +248,23 @@ function ProductDetail({ id, onClose }: { id: string; onClose: () => void }) {
 }
 
 // ═══ ایجاد نسخه BOM جدید (کپی + ویرایش) ═══
-function NewBomDialog({ open, onOpenChange, productId, revisionId, currentItems }: {
+export function NewBomDialog({ open, onOpenChange, productId, revisionId, currentItems }: {
   open: boolean; onOpenChange: (v: boolean) => void; productId: string; revisionId: string
   currentItems: { id: string; componentId: string; qty: number; criticality: string; component: { id: string; code: string; name: string; manufacturer: string | null; unit: string } }[]
 }) {
   const qc = useQueryClient()
-  const { data: comps } = useQuery({ queryKey: ['components-min'], queryFn: () => apiGet<{ components: { id: string; code: string; name: string; criticality: string }[] }>('/api/inventory') })
+  const { data: comps } = useQuery({ queryKey: ['components-min'], queryFn: () => apiGet<{ components: { id: string; code: string; name: string; unit: string; criticality: string }[] }>('/api/inventory') })
   const [items, setItems] = React.useState<BomItemRow[]>([])
   const [notes, setNotes] = React.useState('')
   const [error, setError] = React.useState('')
 
+  const wasOpen = React.useRef(false)
   React.useEffect(() => {
-    if (open) {
+    if (open && !wasOpen.current) {
       setItems(currentItems.map((i) => ({ id: i.id, componentId: i.componentId, qty: i.qty, criticality: i.criticality })))
       setNotes(''); setError('')
     }
+    wasOpen.current = open
   }, [open, currentItems])
 
   const update = (idx: number, patch: Partial<BomItemRow>) => {
@@ -261,6 +281,9 @@ function NewBomDialog({ open, onOpenChange, productId, revisionId, currentItems 
     onSuccess: () => {
       toast({ title: 'نسخه جدید BOM فعال شد', description: 'نسخهٔ قبلی بازنشسته شد؛ سفارش‌های قبلی به نسخهٔ خود متصل باقی می‌مانند.' })
       qc.invalidateQueries({ queryKey: ['product', productId] })
+      qc.invalidateQueries({ queryKey: ['products'] })
+      qc.invalidateQueries({ queryKey: ['inventory'] })
+      qc.invalidateQueries({ queryKey: ['order-material-preview'] })
       onOpenChange(false)
     },
     onError: (e) => setError(e instanceof Error ? e.message : 'خطا'),
@@ -284,7 +307,8 @@ function NewBomDialog({ open, onOpenChange, productId, revisionId, currentItems 
                   {(comps?.components ?? []).map((c) => <SelectItem key={c.id} value={c.id}>{c.code} — {c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Input type="number" min={0.1} step="0.1" value={it.qty} onChange={(e) => update(idx, { qty: parseFloat(e.target.value) || 0 })} dir="ltr" className="w-24 text-left" title="تعداد در هر دستگاه" />
+              <span className="text-xs">{compById(it.componentId)?.unit ?? '—'}</span>
+              <Input type="number" min={0.000001} step="0.1" value={it.qty} onChange={(e) => update(idx, { qty: parseFloat(e.target.value) || 0 })} dir="ltr" className="w-24 text-left" title="تعداد در هر دستگاه" />
               <Select value={it.criticality} onValueChange={(v) => update(idx, { criticality: v })}>
                 <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
                 <SelectContent>

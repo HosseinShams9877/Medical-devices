@@ -1,0 +1,17 @@
+{
+  "success": true,
+  "checks": [
+    "UI component definition creates zero stock",
+    "UI receive and IQC approval affect usable stock",
+    "UI inline product + BOM + order: required 8, available 3, shortage 5, no deduction",
+    "UI Excel products: mapping, preview and commit",
+    "UI Excel bom: mapping, preview and commit",
+    "UI Excel product/BOM selected in new order",
+    "UI Excel customers: mapping, preview and commit",
+    "UI imported customer selected, phone prefilled and service ticket created",
+    "No browser page errors"
+  ],
+  "errors": [],
+  "viewport": "1440x1000",
+  "completedAt": "2026-10-07T07:22:40.568Z"
+}

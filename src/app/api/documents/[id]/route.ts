@@ -1,10 +1,11 @@
+import { uploadDirectory } from '@/lib/storage'
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireUser, withApi, ok, faError } from '@/lib/api'
 import { readFile } from 'fs/promises'
 import path from 'path'
 
-const UPLOAD_DIR = path.join(process.cwd(), 'upload')
+const UPLOAD_DIR = uploadDirectory()
 
 export const GET = withApi(async (req: NextRequest, ctx: { params: Promise<{ id: string }> }) => {
   const user = await requireUser(req)

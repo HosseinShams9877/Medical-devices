@@ -169,6 +169,10 @@ export const POST = withApi(async (req: NextRequest) => {
     }
 
     const { lotId, lotNumber } = await db.$transaction(async (tx) => {
+      if (body.operationId) {
+        if (await tx.inventoryOperation.findUnique({ where: { id: body.operationId } })) throw faError('این خروج قبلاً ثبت شده است.', 409)
+        await tx.inventoryOperation.create({ data: { id: body.operationId, kind: 'MANUAL_OUT' } })
+      }
       const current = await tx.component.findUniqueOrThrow({ where: { id: comp.id } })
       const claimed = await tx.component.updateMany({
         where: { id: comp.id, reservedQty: current.reservedQty, AND: [{ stockQty: current.stockQty }, { stockQty: { gte: current.reservedQty + body.qty! } }] },

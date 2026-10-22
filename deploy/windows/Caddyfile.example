@@ -1,0 +1,20 @@
+# Replace mes.company.test with the exact host in APP_ORIGIN and local DNS.
+# LAN only: install this Caddy instance's root certificate on every client.
+https://mes.company.test {
+    tls internal
+    request_body {
+        max_size 12MB
+    }
+    reverse_proxy 127.0.0.1:3000 {
+        header_up Host {http.request.host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-Proto https
+    }
+    log {
+        output file C:/MES-data/logs/access.log {
+            roll_size 10MiB
+            roll_keep 5
+        }
+    }
+}

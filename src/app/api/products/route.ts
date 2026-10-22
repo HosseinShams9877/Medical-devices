@@ -8,7 +8,7 @@ export const GET = withApi(async (req: NextRequest) => {
   await requirePerm(req, 'bom.view')
   const products = await db.product.findMany({
     include: {
-      revisions: { orderBy: { createdAt: 'asc' }, include: { _count: { select: { boms: true, devices: true, orders: true } } } },
+      revisions: { orderBy: { createdAt: 'asc' }, include: { boms: { where: { status: 'ACTIVE' }, select: { id: true, revision: true }, orderBy: { revision: 'desc' } }, _count: { select: { boms: true, devices: true, orders: true } } } },
       _count: { select: { devices: true, orders: true } },
     },
     orderBy: { createdAt: 'asc' },
@@ -17,8 +17,9 @@ export const GET = withApi(async (req: NextRequest) => {
 })
 
 const createSchema = z.object({
-  code: z.string().min(2).max(40),
-  name: z.string().min(2).max(200),
+  code: z.string().trim().min(2).max(40),
+  name: z.string().trim().min(2).max(200),
+  unit: z.string().trim().min(1).max(30).default('دستگاه'),
   description: z.string().max(2000).optional(),
   category: z.string().max(100).optional(),
   warrantyMonths: z.number().int().min(0).max(120).default(12),
@@ -34,7 +35,7 @@ export const POST = withApi(async (req: NextRequest) => {
 
   const product = await db.product.create({
     data: {
-      code: body.code, name: body.name, description: body.description, category: body.category,
+      code: body.code, name: body.name, unit: body.unit, description: body.description, category: body.category,
       warrantyMonths: body.warrantyMonths, hasFirmware: body.hasFirmware,
       revisions: { create: { revision: body.revision, isActive: true } },
     },

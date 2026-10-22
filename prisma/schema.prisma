@@ -3,14 +3,16 @@
 // هر رکورد: PK / FK / Unique / Index / Timestamps
 // حذف فیزیکی ممنوع — فقط Archive/Deactivate
 // ─────────────────────────────────────────────────────────────
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
+
 // ============ کاربران، نقش‌ها، نشست‌ها ============
 model User {
   id           String    @id @default(cuid())

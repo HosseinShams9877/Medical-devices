@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { db } from '@/lib/db'
 import { requirePerm, readJson, withApi, ok, faError } from '@/lib/api'
 import { audit } from '@/lib/audit'
+import { saveBom } from '@/lib/catalog'
 import { notifyRole } from '@/lib/notify'
 
 export const GET = withApi(async (req: NextRequest, ctx: { params: Promise<{ id: string }> }) => {
@@ -87,8 +88,10 @@ export const POST = withApi(async (req: NextRequest, ctx: { params: Promise<{ id
     if (!body.productRevisionId) throw faError('نسخه انتخاب نشده است.')
     const rev = await db.productRevision.findUnique({ where: { id: body.productRevisionId } })
     if (!rev || rev.productId !== id) throw faError('نسخه معتبر نیست.')
-    await db.productRevision.updateMany({ where: { productId: id }, data: { isActive: false } })
-    await db.productRevision.update({ where: { id: rev.id }, data: { isActive: true } })
+    await db.$transaction(async tx => {
+      await tx.productRevision.updateMany({ where: { productId: id }, data: { isActive: false } })
+      await tx.productRevision.update({ where: { id: rev.id }, data: { isActive: true } })
+    })
     await audit(req, user, 'PRODUCT_REVISION_ACTIVATE', { entityType: 'PRODUCT', entityId: id, entityCode: product.code, newValues: { revision: rev.revision } })
     return ok({ success: true })
   }
@@ -100,7 +103,6 @@ export const POST = withApi(async (req: NextRequest, ctx: { params: Promise<{ id
     if (!rev || rev.productId !== id) throw faError('نسخه محصول معتبر نیست.')
 
     // نسخه جدید از روی نسخه فعال (یا آیتم‌های ارسالی) — BOM قبلی بازنویسی نمی‌شود
-    const newRevNo = (await db.bom.count({ where: { productRevisionId: rev.id } })) + 1
     const sourceItems = body.items ?? rev.boms[0]?.items.map((i) => ({ componentId: i.componentId, qty: i.qty, criticality: i.criticality })) ?? []
     if (sourceItems.length === 0) throw faError('BOM خالی قابل ثبت نیست.')
 
@@ -110,22 +112,12 @@ export const POST = withApi(async (req: NextRequest, ctx: { params: Promise<{ id
       if (!comp) throw faError('یکی از قطعات انتخابی یافت نشد.')
     }
 
-    const newBom = await db.bom.create({ data: { productRevisionId: rev.id, revision: newRevNo, status: 'ACTIVE', notes: body.notes, createdById: user.id } })
-    await db.bomItem.createMany({
-      data: sourceItems.map((item, idx) => ({
-        bomId: newBom.id, componentId: item.componentId, qty: item.qty,
-        criticality: item.criticality ?? 'NORMAL', sortOrder: idx + 1,
-      })),
-    })
-    // بازنشسته‌کردن نسخه قبلی (بدون Overwrite)
-    if (rev.boms[0]) {
-      await db.bom.update({ where: { id: rev.boms[0].id }, data: { status: 'RETIRED' } })
-    }
+    const newBom = await db.$transaction(tx => saveBom(tx, rev.id, sourceItems, user.id, body.notes))
     await audit(req, user, 'BOM_REVISION_CREATE', {
       entityType: 'PRODUCT', entityId: id, entityCode: product.code,
-      oldValues: { previousRevision: rev.boms[0]?.revision }, newValues: { newRevision: newRevNo, items: sourceItems.length },
+      oldValues: { previousRevision: rev.boms[0]?.revision }, newValues: { newRevision: newBom.revision, items: sourceItems.length },
     })
-    await notifyRole('PRODUCTION_MGR', `BOM جدید برای ${product.code}`, `نسخه ${newRevNo} برای نسخه محصول ${rev.revision} فعال شد. سفارش‌های قبلی به نسخه خود متصل می‌مانند.`, 'INFO', { entityType: 'PRODUCT', entityId: id, linkView: 'products' })
+    await notifyRole('PRODUCTION_MGR', `BOM جدید برای ${product.code}`, `نسخه ${newBom.revision} برای نسخه محصول ${rev.revision} فعال شد. سفارش‌های قبلی به نسخه خود متصل می‌مانند.`, 'INFO', { entityType: 'PRODUCT', entityId: id, linkView: 'products' })
     return ok({ bom: newBom })
   }
 
@@ -137,9 +129,12 @@ export const POST = withApi(async (req: NextRequest, ctx: { params: Promise<{ id
     // فقط برای نسخه‌ای که سفارش فعال ندارد قابل ویرایش است
     const activeOrders = await db.productionOrder.count({ where: { productRevisionId: rev.id, status: { in: ['IN_PRODUCTION', 'WAITING_QC', 'REWORK'] } } })
     if (activeOrders > 0) throw faError('برای این نسخه سفارش در حال تولید وجود دارد؛ تغییر قالب فرایند مجاز نیست. نسخه محصول جدید ایجاد کنید.')
-    await db.processStepTemplate.deleteMany({ where: { productRevisionId: rev.id } })
-    await db.processStepTemplate.createMany({
-      data: body.steps.map((s) => ({ productRevisionId: rev.id, ...s, description: s.description ?? null, tools: s.tools ?? null, inputs: s.inputs ?? null, outputs: s.outputs ?? null, acceptance: s.acceptance ?? null })),
+    if (new Set(body.steps.map(s => s.stepIndex)).size !== body.steps.length) throw faError('شماره مرحله تکراری است.')
+    await db.$transaction(async tx => {
+      await tx.processStepTemplate.deleteMany({ where: { productRevisionId: rev.id } })
+      await tx.processStepTemplate.createMany({
+        data: body.steps!.map(s => ({ productRevisionId: rev.id, ...s, description: s.description ?? null, tools: s.tools ?? null, inputs: s.inputs ?? null, outputs: s.outputs ?? null, acceptance: s.acceptance ?? null })),
+      })
     })
     await audit(req, user, 'PROCESS_TEMPLATE_SAVE', { entityType: 'PRODUCT', entityId: id, entityCode: product.code, newValues: { revisionId: rev.id, steps: body.steps.length } })
     return ok({ success: true })
